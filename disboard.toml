@@ -1,0 +1,21 @@
+# This is your main client configuration.
+# map[string]*struct{
+#   Cookies string
+#   Servers []string
+# }
+
+[0]
+# Enter your HTTP cookies for disboard.org here.
+# string
+Cookies = ""
+
+# Your published Disboard servers to bump.
+# []string
+Servers = []
+
+# You can add multiple clients in one.
+# Just make sure they have different cookies.
+
+# [1]
+# Cookies = ""
+# Servers = []
