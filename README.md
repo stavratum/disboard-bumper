@@ -33,7 +33,7 @@ build urself
 Clone the repository
 
 ```sh
-git clone https://github.com/stavratum/bumper.git
+git clone https://github.com/stavratum/disboard-bumper.git
 cd bumper
 ```
 
