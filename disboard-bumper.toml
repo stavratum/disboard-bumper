@@ -1,0 +1,8 @@
+[main]
+# Discord auth token
+# string
+Token = ""
+
+# Discord channel IDs to send interactions to.
+# []string
+Channels = []
