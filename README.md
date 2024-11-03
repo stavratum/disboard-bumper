@@ -34,7 +34,7 @@ Clone the repository
 
 ```sh
 git clone https://github.com/stavratum/disboard-bumper.git
-cd bumper
+cd disboard-bumper
 ```
 
 Build using Go
