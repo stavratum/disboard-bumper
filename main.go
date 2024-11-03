@@ -1,118 +1,93 @@
 package main
 
 import (
-	"crypto/tls"
-	"errors"
 	"log"
-	"net/http"
-	"net/http/cookiejar"
-	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/stavratum/discordgo-self"
 )
 
 var (
-	EndpointAPI    = "https://disboard.org/"
-	EndpointServer = EndpointAPI + "server/"
+	Command = &discordgo.ApplicationCommand{
+		ID:            "947088344167366698",
+		ApplicationID: "302050872383242240",
+		Version:       "1051151064008769576",
 
-	EndpointServerEdit = func(ID string) string { return EndpointServer + "edit/" + ID }
-	EndpointServerBump = func(ID string) string { return EndpointServer + "bump/" + ID }
+		Name: "bump",
+
+		Type: discordgo.ChatApplicationCommand,
+	}
+
+	Config = map[string]struct {
+		Channels []string
+		Token    string
+	}{}
 )
 
-type Account struct {
-	Servers []string
-	Cookies string
-}
-
-var Config = map[string]*Account{}
-
-func init() {
-	for _, fn := range []string{"disboard.toml", "bumper.toml", "disboard-bumper.toml"} {
-		_, err := os.Stat(fn)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-
-		buffer, err := os.ReadFile(fn)
-		if err != nil {
-			log.Println("Failed to read", fn)
-			continue
-		}
-
-		toml.Unmarshal(buffer, &Config)
-		break
-	}
-}
-
-var Client = &http.Client{
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	},
-}
-
-func init() {
-	Client.Jar, _ = cookiejar.New(nil)
-}
-
-var Retries = 2
-
-func worker(name string, cfg *Account) {
-	rwd := 120 / len(cfg.Servers)
-	if rwd < 30 {
-		rwd = 30
-	}
-
-	delay := time.Minute * time.Duration(rwd)
-	timer := time.NewTicker(delay)
-
-	log.Printf("[%s] Delay = %s", name, delay)
-
-	for {
-		for _, ID := range cfg.Servers {
-			for range Retries {
-				resp, err := Client.Get(EndpointServerBump(ID))
-
-				if err == nil {
-					log.Printf("[%s] >> [%s] %s", name, ID, resp.Status)
-					break
-				} else {
-					log.Printf("[%s] >> [%s] %s", name, ID, err.Error())
-					time.Sleep(time.Minute)
-				}
-			}
-
-			<-timer.C
-		}
-	}
-}
-
 func main() {
-	for key, cfg := range Config {
-		if len(cfg.Servers) == 0 {
+	buf, err := os.ReadFile("disboard-bumper.toml")
+	if err != nil {
+		log.Panic("couldn't find disboard-bumper.toml in this directory.")
+	}
+
+	if err = toml.Unmarshal(buf, &Config); err != nil {
+		log.Panic(err)
+	}
+
+	suc := false
+
+	for k, ac := range Config {
+		if len(ac.Channels) == 0 {
 			continue
 		}
 
-		cookies, err := http.ParseCookie(cfg.Cookies)
-		if err != nil {
-			log.Println("[", key, "] Err parsing cookies: ", err)
+		session, _ := discordgo.New(ac.Token)
+		if err = session.Open(); err != nil {
+			log.Printf("[%s] %s", k, err)
 			return
 		}
+		defer session.Close()
 
-		for _, ID := range cfg.Servers {
-			endpoint, err := url.Parse(EndpointServerBump(ID))
-			if err != nil {
-				panic(err)
+		suc = true
+
+		go func() {
+			rwd := 120 / len(ac.Channels)
+			if rwd < 30 {
+				rwd = 30
 			}
 
-			Client.Jar.SetCookies(endpoint, cookies)
-		}
+			delay := time.Minute * time.Duration(rwd+1)
+			timer := time.NewTicker(delay)
 
-		go worker(key, cfg)
+			log.Printf("[%s] Delay = %s", k, delay)
+
+			for {
+				for _, cID := range ac.Channels {
+					for range 2 {
+						if err = session.ApplicationCommandSend(cID, Command); err == nil {
+							log.Printf("[%s > %s]: OK", k, cID)
+							break
+						}
+
+						log.Printf("[%s > %s]: %s", k, cID, err)
+					}
+
+					<-timer.C
+				}
+			}
+		}()
 	}
 
-	<-make(chan struct{})
+	if !suc {
+		return
+	}
+
+	stop := make(chan os.Signal, 2)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	<-stop
 }
