@@ -1,28 +1,28 @@
 # Disboard Bumper
-A configurable Disboard client. All it requires is your browser cookies for `disboard.org` and internet connection to bump.
+A configurable Discord selfbot.
 
 ## Usage
-Make sure you have `disboard.toml` or `bumper.toml` in the environment. Example:
+Make sure you have `disboard-bumper.toml` in the environment. Example:
 
 ```toml
 [client-name]
-# Disboard cookies
-cookies = ""
+# Discord auth token
+token = ""
  
-# Servers to bump
-servers = ["1280072122097602581"]
+# Channels to bump
+channels = ["1302406154223227115"]
 ```
 
-You can also have multiple clients configured:
+You can also have multiple selfbots configured:
 
 ```toml
-[client1]
-cookies = ""
-servers = ["1280072122097602581"]
+[user1]
+token = ""
+channels = ["1302406154223227115"]
 
-[client2]
-cookies = ""
-servers = ["1280703005703929896"]
+[user2]
+token = ""
+channels = ["1302578838894673920"]
 ```
 
 ## Installation
@@ -40,7 +40,7 @@ cd disboard-bumper
 Build using Go
 
 ```sh
-go build -o=bin
+go build
 ```
 
 Build using [Gox](https://github.com/mitchellh/gox)
